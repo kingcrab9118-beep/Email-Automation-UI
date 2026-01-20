@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Recipients - Email Automation Admin{% endblock %}
+
+{% block content %}
+<div class="recipients-page">
+    <div class="card-header">
+        <h1 class="card-title">Recipients Overview</h1>
+        <div class="btn-group">
+            <a href="{{ url_for('recipients.add_form') }}" class="btn btn-success">Add New Recipient</a>
+            <a href="{{ url_for('dashboard.index') }}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+
+    {% if error %}
+        <div class="message message-error">
+            Failed to load recipients: {{ error }}
+        </div>
+    {% endif %}
+
+    {% if recipients %}
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">All Recipients ({{ recipients|length }})</h2>
+                <p class="text-muted">Complete status overview of all email sequences</p>
+            </div>
+            
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>First Name</th>
+                            <th>Company</th>
+                            <th>Role</th>
+                            <th>Email</th>
+                            <th>First Mail</th>
+                            <th>Reminder 1</th>
+                            <th>Reminder 2</th>
+                            <th>Replied</th>
+                            <th>Current Status</th>
+                            <th>Last Activity</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for recipient in recipients %}
+                        <tr>
+                            <td>{{ recipient.first_name }}</td>
+                            <td>{{ recipient.company }}</td>
+                            <td>{{ recipient.role or '-' }}</td>
+                            <td class="email-cell" title="{{ recipient.email }}">{{ recipient.email }}</td>
+                            <td>
+                                {% if recipient.first_mail_sent %}
+                                    <span class="status-sent">Sent</span>
+                                {% else %}
+                                    <span class="status-not-sent">Not Sent</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if recipient.reminder1_sent %}
+                                    <span class="status-sent">Sent</span>
+                                {% else %}
+                                    <span class="status-not-sent">Not Sent</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if recipient.reminder2_sent %}
+                                    <span class="status-sent">Sent</span>
+                                {% else %}
+                                    <span class="status-not-sent">Not Sent</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if recipient.has_replied %}
+                                    <span class="status-replied">Yes</span>
+                                {% else %}
+                                    <span class="status-not-sent">No</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="status-indicator 
+                                    {% if recipient.has_replied %}status-replied
+                                    {% elif recipient.current_status == 'In sequence' %}status-running
+                                    {% elif recipient.current_status == 'Not started' %}status-stopped
+                                    {% else %}status-stopped{% endif %}">
+                                    {{ recipient.current_status }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if recipient.last_activity %}
+                                    {{ recipient.last_activity.strftime('%Y-%m-%d %H:%M') }}
+                                {% else %}
+                                    <span class="text-muted">Never</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Summary Statistics -->
+        <div class="card">
+            <h2 class="card-title">Summary Statistics</h2>
+            {% set total = recipients|length %}
+            {% set sent_first = recipients|selectattr('first_mail_sent')|list|length %}
+            {% set sent_reminder1 = recipients|selectattr('reminder1_sent')|list|length %}
+            {% set sent_reminder2 = recipients|selectattr('reminder2_sent')|list|length %}
+            {% set replied = recipients|selectattr('has_replied')|list|length %}
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <span class="metric-value">{{ sent_first }}</span>
+                    <div class="metric-label">First Emails Sent</div>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-value">{{ sent_reminder1 }}</span>
+                    <div class="metric-label">Reminder 1 Sent</div>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-value">{{ sent_reminder2 }}</span>
+                    <div class="metric-label">Reminder 2 Sent</div>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-value text-success">{{ replied }}</span>
+                    <div class="metric-label">Total Replies</div>
+                </div>
+            </div>
+            
+            {% if total > 0 %}
+                <div class="summary-stats mt-3">
+                    <p><strong>Reply Rate:</strong> {{ (replied / total * 100) | round(1) }}%</p>
+                    <p><strong>First Email Completion:</strong> {{ (sent_first / total * 100) | round(1) }}%</p>
+                    {% if sent_first > 0 %}
+                        <p><strong>Reminder 1 Completion:</strong> {{ (sent_reminder1 / sent_first * 100) | round(1) }}%</p>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+
+    {% else %}
+        <div class="card">
+            <div class="text-center">
+                <h2>No Recipients Found</h2>
+                <p class="text-muted">You haven't added any recipients yet.</p>
+                <a href="{{ url_for('recipients.add_form') }}" class="btn btn-success">Add Your First Recipient</a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+/* Additional styles for recipients table */
+.status-replied {
+    color: #007bff !important;
+    font-weight: 600;
+}
+
+.status-indicator.status-replied {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.summary-stats p {
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .table {
+        font-size: 0.75rem;
+    }
+    
+    .email-cell {
+        max-width: 120px;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.4rem;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Add Recipient - Email Automation Admin{% endblock %}
+
+{% block content %}
+<div class="add-recipient-page">
+    <div class="card-header">
+        <h1 class="card-title">Add New Recipient</h1>
+        <p class="text-muted">Add a new recipient to the email automation sequence</p>
+    </div>
+
+    <div class="form">
+        <form method="POST" action="{{ url_for('recipients.add_form') }}" novalidate>
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                <label for="first_name" class="form-label required">First Name</label>
+                {{ form.first_name(class="form-input", id="first_name", required=true) }}
+                {% if form.first_name.errors %}
+                    <div class="form-errors">
+                        {% for error in form.first_name.errors %}
+                            <span class="form-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="company" class="form-label required">Company</label>
+                {{ form.company(class="form-input", id="company", required=true) }}
+                {% if form.company.errors %}
+                    <div class="form-errors">
+                        {% for error in form.company.errors %}
+                            <span class="form-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="role" class="form-label">Role / Job Title</label>
+                {{ form.role(class="form-input", id="role", placeholder="e.g., CEO, Marketing Director") }}
+                {% if form.role.errors %}
+                    <div class="form-errors">
+                        {% for error in form.role.errors %}
+                            <span class="form-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label required">Email Address</label>
+                {{ form.email(class="form-input", id="email", type="email", required=true) }}
+                {% if form.email.errors %}
+                    <div class="form-errors">
+                        {% for error in form.email.errors %}
+                            <span class="form-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <div class="message message-info">
+                    <strong>Note:</strong> Adding a recipient will create their email sequence records but will NOT automatically send emails. 
+                    The scheduler must be running and configured to send emails according to the sequence timing.
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn btn-success">Add Recipient</button>
+                <a href="{{ url_for('recipients.list') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Help Information -->
+    <div class="card mt-4">
+        <h2 class="card-title">Email Sequence Information</h2>
+        <div class="help-content">
+            <p><strong>What happens when you add a recipient:</strong></p>
+            <ul>
+                <li>The recipient is added to the database with "Not Started" status</li>
+                <li>Email sequence records are created for all 3 steps (First Mail, Reminder 1, Reminder 2)</li>
+                <li>No emails are sent immediately - the scheduler controls when emails are sent</li>
+                <li>You can view the recipient's status in the Recipients overview</li>
+            </ul>
+            
+            <p class="mt-3"><strong>Email Sequence Timing:</strong></p>
+            <ul>
+                <li><strong>First Mail:</strong> Sent when the recipient is activated by the scheduler</li>
+                <li><strong>Reminder 1:</strong> Sent 14 days after the first mail (if no reply)</li>
+                <li><strong>Reminder 2:</strong> Sent 10-11 days after reminder 1 (if enabled and no reply)</li>
+            </ul>
+            
+            <p class="mt-3"><strong>Automatic Reply Detection:</strong></p>
+            <ul>
+                <li>The system monitors for replies and automatically stops sequences when detected</li>
+                <li>Recipients who reply will show "Replied (sequence stopped)" status</li>
+                <li>No further emails will be sent to recipients who have replied</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Additional styles for add recipient form */
+.help-content ul {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.help-content li {
+    margin-bottom: 0.5rem;
+}
+
+.form-input:invalid {
+    border-color: #dc3545;
+}
+
+.form-input:valid {
+    border-color: #28a745;
+}
+
+.form-group .message {
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+}
+</style>
+
+<script>
+// Simple client-side validation enhancement
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const inputs = form.querySelectorAll('.form-input[required]');
+    
+    // Add real-time validation feedback
+    inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+            if (this.value.trim() === '') {
+                this.classList.add('error');
+            } else {
+                this.classList.remove('error');
+            }
+        });
+        
+        input.addEventListener('input', function() {
+            if (this.value.trim() !== '') {
+                this.classList.remove('error');
+            }
+        });
+    });
+    
+    // Email validation
+    const emailInput = document.getElementById('email');
+    if (emailInput) {
+        emailInput.addEventListener('blur', function() {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (this.value && !emailRegex.test(this.value)) {
+                this.classList.add('error');
+            } else if (this.value) {
+                this.classList.remove('error');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Email Automation Admin{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="card-header">
+        <h1 class="card-title">Email Automation Dashboard</h1>
+        {% if metrics %}
+            <p class="text-muted">Last updated: {{ metrics.last_updated.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+        {% endif %}
+    </div>
+
+    {% if error %}
+        <div class="message message-error">
+            {{ error }}
+        </div>
+    {% endif %}
+
+    {% if metrics %}
+        <!-- System Status -->
+        <div class="card">
+            <h2 class="card-title">System Status</h2>
+            <div class="status-indicator {% if metrics.scheduler_running %}status-running{% else %}status-stopped{% endif %}">
+                Scheduler: {% if metrics.scheduler_running %}Running{% else %}Stopped{% endif %}
+            </div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <span class="metric-value">{{ metrics.total_recipients }}</span>
+                <div class="metric-label">Total Recipients</div>
+            </div>
+            
+            <div class="metric-card">
+                <span class="metric-value text-info">{{ metrics.active_recipients }}</span>
+                <div class="metric-label">In Sequence</div>
+            </div>
+            
+            <div class="metric-card">
+                <span class="metric-value text-success">{{ metrics.replied_recipients }}</span>
+                <div class="metric-label">Replied</div>
+            </div>
+            
+            <div class="metric-card">
+                <span class="metric-value text-warning">{{ metrics.pending_recipients }}</span>
+                <div class="metric-label">Not Started</div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <h2 class="card-title">Quick Actions</h2>
+            <div class="btn-group">
+                <a href="{{ url_for('recipients.list') }}" class="btn btn-primary">
+                    View All Recipients
+                </a>
+                <a href="{{ url_for('recipients.add_form') }}" class="btn btn-success">
+                    Add New Recipient
+                </a>
+                <a href="{{ url_for('control.panel') }}" class="btn btn-secondary">
+                    System Controls
+                </a>
+            </div>
+        </div>
+
+        <!-- Summary Information -->
+        <div class="card">
+            <h2 class="card-title">Campaign Summary</h2>
+            <div class="summary-stats">
+                {% if metrics.total_recipients > 0 %}
+                    {% set reply_rate = (metrics.replied_recipients / metrics.total_recipients * 100) | round(1) %}
+                    {% set active_rate = (metrics.active_recipients / metrics.total_recipients * 100) | round(1) %}
+                    
+                    <p><strong>Reply Rate:</strong> {{ reply_rate }}% ({{ metrics.replied_recipients }} of {{ metrics.total_recipients }} recipients)</p>
+                    <p><strong>Active Sequences:</strong> {{ active_rate }}% ({{ metrics.active_recipients }} recipients currently in sequence)</p>
+                    
+                    {% if metrics.pending_recipients > 0 %}
+                        <p><strong>Pending:</strong> {{ metrics.pending_recipients }} recipients not yet started</p>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted">No recipients added yet. <a href="{{ url_for('recipients.add_form') }}">Add your first recipient</a> to get started.</p>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        <div class="card">
+            <h2 class="card-title">Dashboard Unavailable</h2>
+            <p>Unable to load dashboard data. Please check the system configuration and database connectivity.</p>
+            <div class="btn-group">
+                <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">Retry</a>
+                <a href="{{ url_for('control.panel') }}" class="btn btn-secondary">System Controls</a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

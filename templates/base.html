@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Email Automation Admin{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">
+                <a href="{{ url_for('dashboard.index') }}">Email Automation Admin</a>
+            </h1>
+            <nav class="nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="{{ url_for('dashboard.index') }}" 
+                           class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+                            Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('recipients.list') }}" 
+                           class="nav-link {% if request.endpoint.startswith('recipients') %}active{% endif %}">
+                            Recipients
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('control.panel') }}" 
+                           class="nav-link {% if request.endpoint == 'control.panel' %}active{% endif %}">
+                            Control
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="messages">
+                        {% for category, message in messages %}
+                            <div class="message message-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; {{ current_year() }} Email Automation System - Internal Use Only</p>
+        </div>
+    </footer>
+</body>
+</html>

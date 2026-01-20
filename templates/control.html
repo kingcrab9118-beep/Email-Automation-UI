@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+
+{% block title %}System Control - Email Automation Admin{% endblock %}
+
+{% block content %}
+<div class="control-page">
+    <div class="card-header">
+        <h1 class="card-title">System Control Panel</h1>
+        <p class="text-muted">Manual controls for the email automation system</p>
+    </div>
+
+    <!-- System Status Overview -->
+    <div class="card">
+        <h2 class="card-title">Current System Status</h2>
+        <div class="status-grid">
+            <div class="status-item">
+                <strong>Email Scheduler:</strong>
+                {% if scheduler_status and scheduler_status.scheduler_running %}
+                    <span class="status-indicator status-running">✓ Running</span>
+                {% else %}
+                    <span class="status-indicator status-stopped">✗ Stopped</span>
+                {% endif %}
+            </div>
+            
+            {% if scheduler_status %}
+                <div class="status-item">
+                    <strong>Pending Emails:</strong>
+                    <span class="metric-value">{{ scheduler_status.pending_emails or 0 }}</span>
+                </div>
+                
+                {% if scheduler_status.next_run_time %}
+                    <div class="status-item">
+                        <strong>Next Scheduled Run:</strong>
+                        <span class="text-muted">{{ scheduler_status.next_run_time }}</span>
+                    </div>
+                {% endif %}
+            {% endif %}
+            
+            <div class="status-item">
+                <strong>Reply Monitoring:</strong>
+                {% if reply_tracker_status and reply_tracker_status.monitoring_active %}
+                    <span class="status-indicator status-running">✓ Active</span>
+                {% else %}
+                    <span class="status-indicator status-stopped">✗ Inactive</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Control Sections -->
+    <div class="control-grid">
+        <!-- Scheduler Controls -->
+        <div class="control-section">
+            <h3>📅 Email Scheduler</h3>
+            <p>Control the automatic email sending scheduler that processes email sequences according to timing rules.</p>
+            
+            <div class="control-actions">
+                {% if scheduler_status and scheduler_status.scheduler_running %}
+                    <form method="POST" action="{{ url_for('control.stop_scheduler') }}" style="display: inline;" 
+                          onsubmit="return confirmAction('Are you sure you want to STOP the email scheduler? This will pause all automatic email sending until manually restarted.')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-danger">
+                            🛑 Stop Scheduler
+                        </button>
+                    </form>
+                {% else %}
+                    <form method="POST" action="{{ url_for('control.start_scheduler') }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn btn-success">
+                            ▶️ Start Scheduler
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+            
+            {% if scheduler_status %}
+                <div class="status-details mt-2">
+                    <small class="text-muted">
+                        Jobs in queue: {{ scheduler_status.jobs_count or 0 }}
+                        {% if scheduler_status.pending_emails %}
+                            | {{ scheduler_status.pending_emails }} emails ready to send
+                        {% endif %}
+                    </small>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Manual Email Processing -->
+        <div class="control-section">
+            <h3>📧 Manual Email Processing</h3>
+            <p>Trigger immediate processing of due emails without waiting for the scheduled interval.</p>
+            
+            <div class="control-actions">
+                <form method="POST" action="{{ url_for('control.run_email_cycle') }}" style="display: inline;"
+                      onsubmit="return confirmAction('This will immediately process and send ALL due emails. This action respects rate limits but may send multiple emails at once. Continue?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-warning">
+                        🚀 Run Email Cycle Now
+                    </button>
+                </form>
+            </div>
+            
+            <div class="help-text mt-2">
+                <small class="text-muted">
+                    ⚠️ This processes all emails that are currently due to be sent according to their scheduled times.
+                    Rate limiting is still enforced to prevent Microsoft 365 limits from being exceeded.
+                </small>
+            </div>
+        </div>
+
+        <!-- Reply Detection -->
+        <div class="control-section">
+            <h3>📬 Reply Detection</h3>
+            <p>Manually trigger reply checking to update recipient statuses and stop sequences for replied contacts.</p>
+            
+            <div class="control-actions">
+                <form method="POST" action="{{ url_for('control.run_reply_check') }}" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-info">
+                        🔍 Check for Replies Now
+                    </button>
+                </form>
+            </div>
+            
+            {% if reply_tracker_status %}
+                <div class="status-details mt-2">
+                    <small class="text-muted">
+                        Last check: {{ reply_tracker_status.last_check_time or 'Never' }}
+                        {% if reply_tracker_status.known_recipients_count %}
+                            | Monitoring {{ reply_tracker_status.known_recipients_count }} recipients
+                        {% endif %}
+                    </small>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- System Information -->
+        <div class="control-section">
+            <h3>ℹ️ System Information</h3>
+            <p>View current system configuration and status information.</p>
+            
+            <div class="control-actions">
+                <a href="{{ url_for('dashboard.index') }}" class="btn btn-secondary">
+                    📊 View Dashboard
+                </a>
+                <a href="{{ url_for('recipients.list') }}" class="btn btn-secondary">
+                    👥 View Recipients
+                </a>
+            </div>
+            
+            <div class="system-info mt-2">
+                <small class="text-muted">
+                    Admin UI running | 
+                    <a href="{{ url_for('control.system_status') }}" target="_blank">System Status JSON</a>
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Safety Information -->
+    <div class="card">
+        <h2 class="card-title">⚠️ Safety Information</h2>
+        <div class="safety-info">
+            <div class="message message-warning">
+                <strong>IMPORTANT:</strong> These controls directly affect the email automation system. 
+                Use them carefully to avoid disrupting ongoing email sequences or violating Microsoft 365 sending limits.
+            </div>
+            
+            <h4>🛡️ Control Guidelines:</h4>
+            <ul>
+                <li><strong>Start/Stop Scheduler:</strong> Controls automatic email processing. Only stop when necessary for maintenance or troubleshooting.</li>
+                <li><strong>Run Email Cycle:</strong> Immediately processes due emails. Use sparingly to avoid hitting rate limits.</li>
+                <li><strong>Check Replies:</strong> Safe to run frequently. Updates recipient statuses based on inbox scanning.</li>
+                <li><strong>Rate Limiting:</strong> The system automatically respects Microsoft 365 sending limits to prevent account suspension.</li>
+            </ul>
+            
+            <h4>🔧 Troubleshooting:</h4>
+            <ul>
+                <li>If controls are unresponsive, check the backend system configuration and database connectivity.</li>
+                <li>Scheduler issues may require restarting the main email automation application.</li>
+                <li>Reply detection requires proper Microsoft Graph API permissions and authentication.</li>
+                <li>If emails are not sending, verify the scheduler is running and check for rate limiting.</li>
+            </ul>
+            
+            <h4>📈 Best Practices:</h4>
+            <ul>
+                <li>Monitor the dashboard regularly to track system performance and reply rates.</li>
+                <li>Use manual email cycles only when necessary - let the scheduler handle normal operations.</li>
+                <li>Check for replies regularly to ensure sequences stop when prospects respond.</li>
+                <li>Keep the scheduler running during business hours for optimal email delivery timing.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Additional styles for control panel */
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.status-item {
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border-left: 3px solid #dee2e6;
+}
+
+.control-actions {
+    margin-bottom: 1rem;
+}
+
+.control-actions form {
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.status-details {
+    padding-top: 0.5rem;
+    border-top: 1px solid #eee;
+}
+
+.help-text {
+    padding-top: 0.5rem;
+    border-top: 1px solid #eee;
+}
+
+.safety-info ul {
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.safety-info li {
+    margin-bottom: 0.5rem;
+}
+
+.safety-info h4 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: #2c3e50;
+}
+
+.system-info a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.system-info a:hover {
+    text-decoration: underline;
+}
+
+/* Loading states */
+.btn.loading {
+    position: relative;
+    color: transparent;
+}
+
+.btn.loading::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 50%;
+    left: 50%;
+    margin-left: -8px;
+    margin-top: -8px;
+    border: 2px solid transparent;
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+    .control-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .status-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .control-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .control-actions form {
+        margin: 0;
+    }
+}
+</style>
+
+<script>
+// Confirmation dialog function
+function confirmAction(message) {
+    return confirm(message);
+}
+
+// Auto-refresh status every 30 seconds
+let statusRefreshInterval;
+
+function refreshStatus() {
+    fetch('{{ url_for("control.system_status") }}')
+        .then(response => response.json())
+        .then(data => {
+            console.log('System status updated:', data);
+            // Update status indicators if needed
+            updateStatusIndicators(data);
+        })
+        .catch(error => {
+            console.log('Status update failed:', error);
+        });
+}
+
+function updateStatusIndicators(data) {
+    // Update scheduler status indicator
+    const schedulerIndicators = document.querySelectorAll('.status-indicator');
+    schedulerIndicators.forEach(indicator => {
+        if (indicator.textContent.includes('Running') || indicator.textContent.includes('Stopped')) {
+            if (data.scheduler_running) {
+                indicator.className = 'status-indicator status-running';
+                indicator.textContent = '✓ Running';
+            } else {
+                indicator.className = 'status-indicator status-stopped';
+                indicator.textContent = '✗ Stopped';
+            }
+        }
+    });
+}
+
+// Button loading states
+function setButtonLoading(button, loading) {
+    if (loading) {
+        button.classList.add('loading');
+        button.disabled = true;
+    } else {
+        button.classList.remove('loading');
+        button.disabled = false;
+    }
+}
+
+// Enhanced form submission with loading states
+document.addEventListener('DOMContentLoaded', function() {
+    // Start status refresh
+    statusRefreshInterval = setInterval(refreshStatus, 30000);
+    
+    // Add loading states to form submissions
+    const forms = document.querySelectorAll('form[method="POST"]');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (submitButton) {
+                setButtonLoading(submitButton, true);
+                
+                // Reset loading state after 5 seconds (fallback)
+                setTimeout(() => {
+                    setButtonLoading(submitButton, false);
+                }, 5000);
+            }
+        });
+    });
+    
+    // Enhanced confirmation dialogs
+    const dangerButtons = document.querySelectorAll('.btn-danger');
+    dangerButtons.forEach(button => {
+        const form = button.closest('form');
+        if (form && !form.onsubmit) {
+            form.addEventListener('submit', function(e) {
+                const confirmed = confirm('⚠️ WARNING: This action will stop the email scheduler and pause all automatic email sending. Are you absolutely sure you want to continue?');
+                if (!confirmed) {
+                    e.preventDefault();
+                    setButtonLoading(button, false);
+                }
+            });
+        }
+    });
+    
+    const warningButtons = document.querySelectorAll('.btn-warning');
+    warningButtons.forEach(button => {
+        const form = button.closest('form');
+        if (form && !form.onsubmit) {
+            form.addEventListener('submit', function(e) {
+                const confirmed = confirm('⚠️ This will immediately send all due emails. This action respects rate limits but may send multiple emails at once. Continue?');
+                if (!confirmed) {
+                    e.preventDefault();
+                    setButtonLoading(button, false);
+                }
+            });
+        }
+    });
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (statusRefreshInterval) {
+        clearInterval(statusRefreshInterval);
+    }
+});
+</script>
+{% endblock %}
