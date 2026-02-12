@@ -21,14 +21,15 @@
     {% if recipients %}
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">All Recipients ({{ recipients|length }})</h2>
-                <p class="text-muted">Complete status overview of all email sequences</p>
+                <h2 class="card-title">All Recipients ({{ total_count }})</h2>
+                <p class="text-muted">Showing {{ recipients|length }} of {{ total_count }} recipients (Page {{ page }} of {{ total_pages }})</p>
             </div>
             
             <div class="table-container">
                 <table class="table">
                     <thead>
                         <tr>
+                            <th>No</th>
                             <th>First Name</th>
                             <th>Company</th>
                             <th>Role</th>
@@ -39,11 +40,13 @@
                             <th>Replied</th>
                             <th>Current Status</th>
                             <th>Last Activity</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for recipient in recipients %}
                         <tr>
+                            <td>{{ (page - 1) * per_page + loop.index }}</td>
                             <td>{{ recipient.first_name }}</td>
                             <td>{{ recipient.company }}</td>
                             <td>{{ recipient.role or '-' }}</td>
@@ -92,50 +95,76 @@
                                     <span class="text-muted">Never</span>
                                 {% endif %}
                             </td>
+                            <td class="actions-cell">
+                                <a href="{{ url_for('recipients.edit_form', recipient_id=recipient.id) }}" 
+                                   class="btn btn-sm btn-primary" title="Edit">Edit</a>
+                                <form method="POST" action="{{ url_for('recipients.delete', recipient_id=recipient.id) }}" 
+                                      style="display: inline;" 
+                                      onsubmit="return confirm('Are you sure you want to delete {{ recipient.first_name }} ({{ recipient.email }})? This action cannot be undone.');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Delete">Delete</button>
+                                </form>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+
+            <!-- Pagination Controls -->
+            {% if total_pages > 1 %}
+            <div class="pagination-container">
+                <div class="pagination">
+                    {% if has_prev %}
+                        <a href="{{ url_for('recipients.list', page=1) }}" class="pagination-btn">First</a>
+                        <a href="{{ url_for('recipients.list', page=page-1) }}" class="pagination-btn">Previous</a>
+                    {% else %}
+                        <span class="pagination-btn disabled">First</span>
+                        <span class="pagination-btn disabled">Previous</span>
+                    {% endif %}
+
+                    <span class="pagination-info">Page {{ page }} of {{ total_pages }}</span>
+
+                    {% if has_next %}
+                        <a href="{{ url_for('recipients.list', page=page+1) }}" class="pagination-btn">Next</a>
+                        <a href="{{ url_for('recipients.list', page=total_pages) }}" class="pagination-btn">Last</a>
+                    {% else %}
+                        <span class="pagination-btn disabled">Next</span>
+                        <span class="pagination-btn disabled">Last</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Summary Statistics -->
         <div class="card">
-            <h2 class="card-title">Summary Statistics</h2>
-            {% set total = recipients|length %}
+            <h2 class="card-title">Summary Statistics (All Recipients)</h2>
             {% set sent_first = recipients|selectattr('first_mail_sent')|list|length %}
             {% set sent_reminder1 = recipients|selectattr('reminder1_sent')|list|length %}
             {% set sent_reminder2 = recipients|selectattr('reminder2_sent')|list|length %}
             {% set replied = recipients|selectattr('has_replied')|list|length %}
             
+            <p class="text-muted">Note: Statistics shown are for current page only. Total count: {{ total_count }} recipients</p>
+            
             <div class="metrics-grid">
                 <div class="metric-card">
                     <span class="metric-value">{{ sent_first }}</span>
-                    <div class="metric-label">First Emails Sent</div>
+                    <div class="metric-label">First Emails Sent (this page)</div>
                 </div>
                 <div class="metric-card">
                     <span class="metric-value">{{ sent_reminder1 }}</span>
-                    <div class="metric-label">Reminder 1 Sent</div>
+                    <div class="metric-label">Reminder 1 Sent (this page)</div>
                 </div>
                 <div class="metric-card">
                     <span class="metric-value">{{ sent_reminder2 }}</span>
-                    <div class="metric-label">Reminder 2 Sent</div>
+                    <div class="metric-label">Reminder 2 Sent (this page)</div>
                 </div>
                 <div class="metric-card">
                     <span class="metric-value text-success">{{ replied }}</span>
-                    <div class="metric-label">Total Replies</div>
+                    <div class="metric-label">Total Replies (this page)</div>
                 </div>
             </div>
-            
-            {% if total > 0 %}
-                <div class="summary-stats mt-3">
-                    <p><strong>Reply Rate:</strong> {{ (replied / total * 100) | round(1) }}%</p>
-                    <p><strong>First Email Completion:</strong> {{ (sent_first / total * 100) | round(1) }}%</p>
-                    {% if sent_first > 0 %}
-                        <p><strong>Reminder 1 Completion:</strong> {{ (sent_reminder1 / sent_first * 100) | round(1) }}%</p>
-                    {% endif %}
-                </div>
-            {% endif %}
         </div>
 
     {% else %}
@@ -150,6 +179,48 @@
 </div>
 
 <style>
+/* Pagination styles */
+.pagination-container {
+    padding: 1.5rem;
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid #e0e0e0;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid #ddd;
+    background-color: #fff;
+    color: #333;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(.disabled) {
+    background-color: #007bff;
+    color: #fff;
+    border-color: #007bff;
+}
+
+.pagination-btn.disabled {
+    color: #999;
+    cursor: not-allowed;
+    background-color: #f5f5f5;
+}
+
+.pagination-info {
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    color: #333;
+}
+
 /* Additional styles for recipients table */
 .status-replied {
     color: #007bff !important;
@@ -165,6 +236,16 @@
     margin-bottom: 0.5rem;
 }
 
+.actions-cell {
+    white-space: nowrap;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    margin: 0 0.1rem;
+}
+
 @media (max-width: 768px) {
     .table {
         font-size: 0.75rem;
@@ -177,6 +258,21 @@
     .table th,
     .table td {
         padding: 0.4rem;
+    }
+    
+    .btn-sm {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.75rem;
+    }
+
+    .pagination {
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .pagination-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.875rem;
     }
 }
 </style>

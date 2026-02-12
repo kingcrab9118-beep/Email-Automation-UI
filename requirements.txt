@@ -2,6 +2,7 @@
 
 # Core Flask framework
 Flask==2.3.3
+Werkzeug==2.3.7
 Jinja2==3.1.2
 
 # Form handling and CSRF protection
@@ -23,6 +24,9 @@ python-dotenv==1.0.0
 
 # Async support
 aiosqlite==0.19.0
+
+# Scheduler (for backend integration)
+APScheduler==3.10.4
 
 # Development dependencies (optional)
 # pytest==7.4.2

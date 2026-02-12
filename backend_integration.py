@@ -11,7 +11,9 @@ from typing import Optional, Dict, Any, Tuple
 from contextlib import asynccontextmanager
 
 # Add parent directory to path for email_automation imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +32,8 @@ class BackendIntegration:
         """Get configuration with proper error handling"""
         try:
             if not self._config:
-                from email_automation.config import Config
-                self._config = Config()
+                import email_automation.config as ea_config
+                self._config = ea_config.Config()
             yield self._config
         except Exception as e:
             logger.error(f"Error getting configuration: {e}")
@@ -43,9 +45,9 @@ class BackendIntegration:
         db_manager = None
         try:
             from email_automation.db.database import DatabaseManager
-            from email_automation.config import Config
+            import email_automation.config as ea_config
             
-            config = Config()
+            config = ea_config.Config()
             db_manager = DatabaseManager(config.database_url)
             await db_manager.initialize()
             yield db_manager
@@ -65,9 +67,9 @@ class BackendIntegration:
         try:
             async with self.get_database_manager() as db_manager:
                 from email_automation.scheduler.scheduler import SequenceScheduler
-                from email_automation.config import Config
+                import email_automation.config as ea_config
                 
-                config = Config()
+                config = ea_config.Config()
                 scheduler = SequenceScheduler(config, db_manager)
                 return await scheduler.get_scheduler_status()
                 
@@ -143,9 +145,9 @@ class BackendIntegration:
         """Initialize the backend application components"""
         try:
             from email_automation.main import EmailAutomationApp
-            from email_automation.config import Config
+            import email_automation.config as ea_config
             
-            config = Config()
+            config = ea_config.Config()
             self._app_instance = EmailAutomationApp(config)
             await self._app_instance.initialize()
             

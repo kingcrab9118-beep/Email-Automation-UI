@@ -28,6 +28,10 @@ class WTFAddRecipientForm(FlaskForm):
 def list():
     """Recipients overview page with status table"""
     try:
+        # Get page number from query string (default to 1)
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        
         # Run async function in event loop
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -37,10 +41,26 @@ def list():
             if not ui_db.db_manager:
                 loop.run_until_complete(ui_db.initialize())
             
-            # Get recipients with status
-            recipients = loop.run_until_complete(ui_db.get_recipients_with_status())
+            # Get recipients with status (paginated)
+            recipients, total_count = loop.run_until_complete(
+                ui_db.get_recipients_with_status(page=page, per_page=per_page)
+            )
             
-            return render_template('recipients.html', recipients=recipients)
+            # Calculate pagination info
+            total_pages = (total_count + per_page - 1) // per_page  # Ceiling division
+            has_prev = page > 1
+            has_next = page < total_pages
+            
+            return render_template(
+                'recipients.html', 
+                recipients=recipients,
+                page=page,
+                per_page=per_page,
+                total_count=total_count,
+                total_pages=total_pages,
+                has_prev=has_prev,
+                has_next=has_next
+            )
             
         finally:
             loop.close()
@@ -150,3 +170,114 @@ def add_submit():
         flash(f"Error adding recipient: {str(e)}", 'error')
         SecurityMiddleware.log_security_event("RECIPIENT_ADD_ERROR", str(e))
         return redirect(url_for('recipients.add_form'))
+
+
+@recipients_bp.route('/<int:recipient_id>/edit', methods=['GET', 'POST'])
+@rate_limit(max_requests=10, window_seconds=300)
+def edit_form(recipient_id):
+    """Edit recipient form page"""
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            # Initialize database if needed
+            if not ui_db.db_manager:
+                loop.run_until_complete(ui_db.initialize())
+            
+            # Get recipient by ID
+            recipient = loop.run_until_complete(ui_db.get_recipient_by_id(recipient_id))
+            
+            if not recipient:
+                flash(f"Recipient with ID {recipient_id} not found", 'error')
+                return redirect(url_for('recipients.list'))
+            
+            if request.method == 'POST':
+                # Validate CSRF token
+                validate_csrf(request.form.get('csrf_token'))
+                
+                # Validate form data
+                validator = FormValidator(request.form.to_dict())
+                
+                if not validator.validate_recipient_form():
+                    for error in validator.get_errors():
+                        flash(error, 'error')
+                    return render_template('edit_recipient.html', recipient=recipient)
+                
+                # Update recipient
+                success, message = loop.run_until_complete(
+                    ui_db.update_recipient(recipient_id, validator.get_cleaned_data())
+                )
+                
+                if success:
+                    flash(message, 'success')
+                    SecurityMiddleware.log_security_event("RECIPIENT_UPDATED", f"ID: {recipient_id}")
+                    return redirect(url_for('recipients.list'))
+                else:
+                    flash(message, 'error')
+            
+            return render_template('edit_recipient.html', recipient=recipient)
+            
+        finally:
+            loop.close()
+            
+    except Exception as e:
+        logger.error(f"Error editing recipient: {e}")
+        flash(f"Error editing recipient: {str(e)}", 'error')
+        return redirect(url_for('recipients.list'))
+
+@recipients_bp.route('/<int:recipient_id>/edit', methods=['POST'])
+@rate_limit(max_requests=10, window_seconds=300)
+def edit(recipient_id):
+    """Handle recipient edit form submission"""
+    return edit_form(recipient_id)
+
+@recipients_bp.route('/<int:recipient_id>/delete', methods=['POST'])
+@rate_limit(max_requests=10, window_seconds=300)
+def delete(recipient_id):
+    """Delete recipient"""
+    loop = None
+    try:
+        # Validate CSRF token
+        validate_csrf(request.form.get('csrf_token'))
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        # Initialize database if needed
+        if not ui_db.db_manager:
+            loop.run_until_complete(ui_db.initialize())
+        
+        # Delete recipient with retry logic
+        max_retries = 3
+        retry_delay = 0.5
+        
+        for attempt in range(max_retries):
+            try:
+                success, message = loop.run_until_complete(ui_db.delete_recipient(recipient_id))
+                
+                if success:
+                    flash(message, 'success')
+                    SecurityMiddleware.log_security_event("RECIPIENT_DELETED", f"ID: {recipient_id}")
+                else:
+                    flash(message, 'error')
+                
+                return redirect(url_for('recipients.list'))
+                
+            except Exception as e:
+                if "database is locked" in str(e) and attempt < max_retries - 1:
+                    logger.warning(f"Database locked, retrying... (attempt {attempt + 1}/{max_retries})")
+                    loop.run_until_complete(asyncio.sleep(retry_delay))
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    raise
+            
+    except Exception as e:
+        logger.error(f"Error deleting recipient: {e}")
+        flash(f"Error deleting recipient: {str(e)}", 'error')
+        SecurityMiddleware.log_security_event("RECIPIENT_DELETE_ERROR", str(e))
+        return redirect(url_for('recipients.list'))
+    
+    finally:
+        if loop:
+            loop.close()

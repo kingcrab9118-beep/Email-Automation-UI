@@ -22,14 +22,8 @@
                     </li>
                     <li class="nav-item">
                         <a href="{{ url_for('recipients.list') }}" 
-                           class="nav-link {% if request.endpoint.startswith('recipients') %}active{% endif %}">
+                           class="nav-link {% if request.endpoint and request.endpoint.startswith('recipients') %}active{% endif %}">
                             Recipients
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ url_for('control.panel') }}" 
-                           class="nav-link {% if request.endpoint == 'control.panel' %}active{% endif %}">
-                            Control
                         </a>
                     </li>
                 </ul>

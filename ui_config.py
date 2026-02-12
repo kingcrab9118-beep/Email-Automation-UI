@@ -7,6 +7,7 @@ import os
 import secrets
 import logging
 from typing import Optional
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +15,9 @@ class UIConfig:
     """Configuration class for the Admin UI"""
     
     def __init__(self):
+        # Load .env file from ui directory
+        load_dotenv()
+        
         # Load environment variables
         self.load_config()
         
@@ -41,8 +45,9 @@ class UIConfig:
                 self.secret_key = secrets.token_hex(32)
                 logger.warning("Generated random secret key. Set UI_SECRET_KEY environment variable for persistence!")
         
-        # Database configuration (reuse from main application)
-        self.database_url = os.getenv('DATABASE_URL', 'sqlite:///email_automation.db')
+        # Database configuration (shared with email_automation backend)
+        # Default points to email_automation directory database
+        self.database_url = os.getenv('DATABASE_URL', 'sqlite:///../email_automation/email_automation.db')
         
         # Security settings
         # TODO: Enable authentication if exposed publicly
@@ -150,10 +155,10 @@ class UIConfig:
         print(f"Database: {self.database_url}")
         
         if self.debug:
-            print(f"\n⚠️  DEVELOPMENT MODE - NOT FOR PRODUCTION USE")
+            print(f"\nWARNING: DEVELOPMENT MODE - NOT FOR PRODUCTION USE")
         
         if not self.require_auth:
-            print(f"\n⚠️  NO AUTHENTICATION - INTERNAL USE ONLY")
+            print(f"\nWARNING: NO AUTHENTICATION - INTERNAL USE ONLY")
         
         print(f"{'='*60}\n")
 

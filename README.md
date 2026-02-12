@@ -4,12 +4,16 @@ A Flask-based web interface for monitoring and controlling the Microsoft 365 Ema
 
 ## Overview
 
-This admin UI provides operational control over the email automation system with:
+This admin UI provides monitoring and management for the email automation system with:
 
 - **Dashboard**: System overview and metrics
 - **Recipients Management**: View all recipients and their email sequence status
 - **Add Recipients**: Safe form to add new recipients to sequences
-- **System Controls**: Manual controls for scheduler and reply detection
+
+The email automation backend runs independently and automatically handles:
+- Email scheduling and sending
+- Reply detection and tracking
+- Sequence management
 
 ## Features
 
@@ -79,7 +83,9 @@ Copy `.env.example` to `.env` and configure:
 - `UI_SECRET_KEY`: Secret key for sessions and CSRF
 
 #### Database
-- `DATABASE_URL`: Database connection (should match main system)
+- `DATABASE_URL`: Database connection (default: `sqlite:///../email_automation/email_automation.db`)
+  - **Important**: This should point to the email_automation directory database
+  - The UI and backend share the same database file
 
 #### Security (Production)
 - `UI_REQUIRE_AUTH`: Enable authentication (default: false)
@@ -128,19 +134,14 @@ For production deployment:
 - Add new recipient: `/recipients/new`
 - See exact email sending status for each recipient
 
-### System Controls
-- Access controls: `/control`
-- Start/stop email scheduler
-- Trigger manual email processing
-- Run reply detection
-
 ## Integration with Main System
 
-The admin UI integrates with the existing email automation system by:
+The admin UI integrates with the email automation system by:
 
-1. **Database Access**: Reads from the same SQLite database
-2. **Backend Integration**: Calls existing scheduler and reply tracker functions
-3. **No Duplication**: Uses existing business logic without reimplementation
+1. **Shared Database**: Both UI and backend use `email_automation/email_automation.db`
+2. **Read-Only Monitoring**: UI displays data from the shared database
+3. **Recipient Management**: UI can add new recipients to the database
+4. **Automatic Processing**: Backend automatically processes all recipients
 
 ### Database Schema
 

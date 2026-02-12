@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Recipient - Email Automation Admin{% endblock %}
+
+{% block content %}
+<div class="add-recipient-page">
+    <div class="card-header">
+        <h1 class="card-title">Edit Recipient</h1>
+        <a href="{{ url_for('recipients.list') }}" class="btn btn-secondary">Back to Recipients</a>
+    </div>
+
+    <div class="card">
+        <form method="POST" action="{{ url_for('recipients.edit', recipient_id=recipient.id) }}" class="recipient-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="form-group">
+                <label for="first_name" class="form-label">First Name *</label>
+                <input type="text" 
+                       id="first_name" 
+                       name="first_name" 
+                       class="form-input" 
+                       value="{{ recipient.first_name }}"
+                       required 
+                       maxlength="100"
+                       placeholder="e.g., John">
+                <small class="form-help">Recipient's first name for email personalization</small>
+            </div>
+
+            <div class="form-group">
+                <label for="company" class="form-label">Company *</label>
+                <input type="text" 
+                       id="company" 
+                       name="company" 
+                       class="form-input" 
+                       value="{{ recipient.company }}"
+                       required 
+                       maxlength="200"
+                       placeholder="e.g., Acme Corporation">
+                <small class="form-help">Company or organization name</small>
+            </div>
+
+            <div class="form-group">
+                <label for="role" class="form-label">Role / Title</label>
+                <input type="text" 
+                       id="role" 
+                       name="role" 
+                       class="form-input" 
+                       value="{{ recipient.role or '' }}"
+                       maxlength="100"
+                       placeholder="e.g., CEO, Marketing Director (optional)">
+                <small class="form-help">Job title or role (optional)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address *</label>
+                <input type="email" 
+                       id="email" 
+                       name="email" 
+                       class="form-input" 
+                       value="{{ recipient.email }}"
+                       required 
+                       maxlength="255"
+                       placeholder="e.g., john@acme.com">
+                <small class="form-help">Valid email address for sending emails</small>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Update Recipient</button>
+                <a href="{{ url_for('recipients.list') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title">Important Notes</h2>
+        <ul class="info-list">
+            <li>Changing the email address will not affect already sent emails</li>
+            <li>Email sequence status will be preserved</li>
+            <li>All fields marked with * are required</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+.recipient-form {
+    max-width: 600px;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.form-input:invalid {
+    border-color: #dc3545;
+}
+
+.form-help {
+    display: block;
+    margin-top: 0.25rem;
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+.form-actions {
+    margin-top: 2rem;
+    display: flex;
+    gap: 1rem;
+}
+
+.info-list {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.info-list li {
+    margin-bottom: 0.5rem;
+    color: #666;
+}
+</style>
+{% endblock %}

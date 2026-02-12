@@ -35,14 +35,12 @@ def create_app():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    # Register blueprints
+    # Register blueprints (only dashboard and recipients)
     from routes.dashboard import dashboard_bp
     from routes.recipients import recipients_bp
-    from routes.control import control_bp
     
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(recipients_bp)
-    app.register_blueprint(control_bp)
     
     # Error handlers
     @app.errorhandler(404)

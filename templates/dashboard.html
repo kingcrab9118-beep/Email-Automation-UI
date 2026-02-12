@@ -18,14 +18,6 @@
     {% endif %}
 
     {% if metrics %}
-        <!-- System Status -->
-        <div class="card">
-            <h2 class="card-title">System Status</h2>
-            <div class="status-indicator {% if metrics.scheduler_running %}status-running{% else %}status-stopped{% endif %}">
-                Scheduler: {% if metrics.scheduler_running %}Running{% else %}Stopped{% endif %}
-            </div>
-        </div>
-
         <!-- Metrics Grid -->
         <div class="metrics-grid">
             <div class="metric-card">
@@ -59,9 +51,6 @@
                 <a href="{{ url_for('recipients.add_form') }}" class="btn btn-success">
                     Add New Recipient
                 </a>
-                <a href="{{ url_for('control.panel') }}" class="btn btn-secondary">
-                    System Controls
-                </a>
             </div>
         </div>
 
@@ -90,7 +79,6 @@
             <p>Unable to load dashboard data. Please check the system configuration and database connectivity.</p>
             <div class="btn-group">
                 <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">Retry</a>
-                <a href="{{ url_for('control.panel') }}" class="btn btn-secondary">System Controls</a>
             </div>
         </div>
     {% endif %}

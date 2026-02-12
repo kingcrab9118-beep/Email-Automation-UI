@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app
-from config import ui_config
+from ui_config import ui_config
 
 def setup_logging():
     """Configure logging for the application"""
@@ -90,9 +90,9 @@ def main():
         # Production deployment warnings
         if ui_config.is_production():
             if not ui_config.require_auth:
-                logging.warning("⚠️  Authentication is disabled in production mode!")
+                logging.warning("WARNING: Authentication is disabled in production mode!")
             if not ui_config.use_https:
-                logging.warning("⚠️  HTTPS is disabled in production mode!")
+                logging.warning("WARNING: HTTPS is disabled in production mode!")
         
         # Start the server
         logging.info(f"Starting Email Automation Admin UI on {ui_config.host}:{ui_config.port}")
