@@ -62,6 +62,19 @@
             </div>
 
             <div class="form-group">
+                <label for="initial_mail_date" class="form-label">Initial Email Send Date (Optional)</label>
+                {{ form.initial_mail_date(class="form-input", id="initial_mail_date", type="datetime-local", placeholder="Leave empty for immediate scheduling") }}
+                <small class="form-help">If specified, the first email will be scheduled for this date/time. Reminders will be calculated from this date.</small>
+                {% if form.initial_mail_date.errors %}
+                    <div class="form-errors">
+                        {% for error in form.initial_mail_date.errors %}
+                            <span class="form-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
                 <div class="message message-info">
                     <strong>Note:</strong> Adding a recipient will create their email sequence records but will NOT automatically send emails. 
                     The scheduler must be running and configured to send emails according to the sequence timing.
@@ -126,6 +139,13 @@
 .form-group .message {
     margin-top: 0.5rem;
     margin-bottom: 0;
+}
+
+.form-help {
+    display: block;
+    margin-top: 0.25rem;
+    color: #666;
+    font-size: 0.875rem;
 }
 </style>
 

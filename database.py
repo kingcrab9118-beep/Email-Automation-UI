@@ -53,6 +53,7 @@ class RecipientStatus:
     has_replied: bool
     current_status: str
     last_activity: Optional[datetime]
+    next_activity: Optional[datetime]
 
 class UIDatabase:
     """Database integration layer for the admin UI"""
@@ -116,8 +117,14 @@ class UIDatabase:
             self.logger.error(f"Error getting dashboard metrics: {e}")
             return DashboardMetrics(0, 0, 0, 0, False, datetime.now())
     
-    async def get_recipients_with_status(self, page: int = 1, per_page: int = 20) -> Tuple[List[RecipientStatus], int]:
-        """Get recipients with their email sequence status (paginated)
+    async def get_recipients_with_status(self, page: int = 1, per_page: int = 20, sort_by: str = 'id', sort_order: str = 'asc') -> Tuple[List[RecipientStatus], int]:
+        """Get recipients with their email sequence status (paginated and sortable)
+        
+        Args:
+            page: Page number (1-indexed)
+            per_page: Number of items per page
+            sort_by: Field to sort by (id, first_name, company, role, email, first_mail_sent, reminder1_sent, reminder2_sent, has_replied, current_status, last_activity, next_activity)
+            sort_order: Sort order ('asc' or 'desc')
         
         Returns:
             Tuple of (recipients list, total count)
@@ -131,19 +138,40 @@ class UIDatabase:
             # Calculate offset
             offset = (page - 1) * per_page
             
+            # Map sort_by to actual column names
+            sort_column_map = {
+                'id': 'r.id',
+                'first_name': 'r.first_name',
+                'company': 'r.company',
+                'role': 'r.role',
+                'email': 'r.email',
+                'first_mail_sent': 'first_mail_sent',
+                'reminder1_sent': 'reminder1_sent',
+                'reminder2_sent': 'reminder2_sent',
+                'has_replied': 'has_replied',
+                'current_status': 'r.status',
+                'last_activity': 'last_activity',
+                'next_activity': 'next_activity'
+            }
+            
+            # Validate sort parameters
+            sort_column = sort_column_map.get(sort_by, 'r.id')
+            sort_direction = 'DESC' if sort_order.lower() == 'desc' else 'ASC'
+            
             # Complex query to get recipients with email status in one query
-            query = """
+            query = f"""
             SELECT 
                 r.id, r.first_name, r.company, r.role, r.email, r.status,
                 MAX(CASE WHEN es.step = 1 AND es.sent_at IS NOT NULL THEN 1 ELSE 0 END) as first_mail_sent,
                 MAX(CASE WHEN es.step = 2 AND es.sent_at IS NOT NULL THEN 1 ELSE 0 END) as reminder1_sent,
                 MAX(CASE WHEN es.step = 3 AND es.sent_at IS NOT NULL THEN 1 ELSE 0 END) as reminder2_sent,
                 MAX(CASE WHEN es.replied = 1 THEN 1 ELSE 0 END) as has_replied,
-                MAX(es.sent_at) as last_activity
+                MAX(es.sent_at) as last_activity,
+                MIN(CASE WHEN es.sent_at IS NULL AND es.replied = 0 THEN es.scheduled_at ELSE NULL END) as next_activity
             FROM recipients r
             LEFT JOIN email_sequence es ON r.id = es.recipient_id
             GROUP BY r.id, r.first_name, r.company, r.role, r.email, r.status
-            ORDER BY r.created_at ASC
+            ORDER BY {sort_column} {sort_direction}
             LIMIT ? OFFSET ?
             """
             
@@ -161,6 +189,16 @@ class UIDatabase:
                         # If parsing fails, leave as None
                         last_activity = None
                 
+                # Parse next_activity from string to datetime if it exists
+                next_activity = None
+                if row[11]:
+                    try:
+                        # SQLite stores datetime as string, parse it
+                        next_activity = datetime.fromisoformat(row[11].replace(' ', 'T'))
+                    except (ValueError, AttributeError):
+                        # If parsing fails, leave as None
+                        next_activity = None
+                
                 recipients.append(RecipientStatus(
                     id=row[0],
                     first_name=row[1],
@@ -172,7 +210,8 @@ class UIDatabase:
                     reminder2_sent=bool(row[8]),
                     has_replied=bool(row[9]),
                     current_status=self._calculate_status(row[5], bool(row[9])),
-                    last_activity=last_activity
+                    last_activity=last_activity,
+                    next_activity=next_activity
                 ))
             
             return recipients, total_count
@@ -208,13 +247,22 @@ class UIDatabase:
             if existing:
                 return False, f"Recipient with email {recipient_data['email']} already exists"
             
+            # Parse initial_mail_date if provided
+            initial_mail_date = None
+            if recipient_data.get('initial_mail_date'):
+                try:
+                    initial_mail_date = datetime.fromisoformat(recipient_data['initial_mail_date'])
+                except (ValueError, TypeError):
+                    return False, "Invalid initial email send date format"
+            
             # Create recipient
             recipient = Recipient(
                 first_name=recipient_data['first_name'].strip(),
                 company=recipient_data['company'].strip(),
                 role=recipient_data.get('role', '').strip(),
                 email=recipient_data['email'].strip().lower(),
-                status='pending'
+                status='pending',
+                initial_mail_date=initial_mail_date
             )
             
             if not recipient.validate():
@@ -223,10 +271,41 @@ class UIDatabase:
             # Insert recipient
             recipient_id = await self.recipient_repo.create(recipient)
             
-            # Note: We only create the recipient here with 'pending' status.
-            # The scheduler will automatically detect pending recipients and create
-            # the email sequence with proper timing when it processes them.
-            # This avoids conflicts with the scheduler's sequence creation logic.
+            # Create email sequence with proper timing based on initial_mail_date
+            if initial_mail_date:
+                # Calculate reminder dates based on initial_mail_date
+                reminder1_days = self.email_config.follow_up_1_delay_days
+                reminder2_days = self.email_config.follow_up_2_delay_days
+                
+                # Create sequence entries
+                sequences = [
+                    EmailSequence(
+                        recipient_id=recipient_id,
+                        step=1,
+                        scheduled_at=initial_mail_date
+                    ),
+                    EmailSequence(
+                        recipient_id=recipient_id,
+                        step=2,
+                        scheduled_at=initial_mail_date + timedelta(days=reminder1_days)
+                    ),
+                    EmailSequence(
+                        recipient_id=recipient_id,
+                        step=3,
+                        scheduled_at=initial_mail_date + timedelta(days=reminder1_days + reminder2_days)
+                    )
+                ]
+                
+                for seq in sequences:
+                    await self.sequence_repo.create(seq)
+                
+                # Update recipient status to 'active' since sequence is created
+                await self.recipient_repo.update_status(recipient_id, 'active')
+                
+                self.logger.info(f"Created email sequence for recipient {recipient_id} starting at {initial_mail_date}")
+            
+            # Note: If no initial_mail_date is provided, the scheduler will automatically 
+            # detect pending recipients and create the email sequence when it processes them.
             
             self.logger.info(f"Added recipient {recipient.email} with ID {recipient_id}")
             return True, f"Successfully added {recipient.email}"

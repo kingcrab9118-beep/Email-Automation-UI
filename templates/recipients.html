@@ -29,17 +29,126 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>No</th>
-                            <th>First Name</th>
-                            <th>Company</th>
-                            <th>Role</th>
-                            <th>Email</th>
-                            <th>First Mail</th>
-                            <th>Reminder 1</th>
-                            <th>Reminder 2</th>
-                            <th>Replied</th>
-                            <th>Current Status</th>
-                            <th>Last Activity</th>
+                            <th>
+                                <a href="{{ url_for('recipients.list', page=page, sort_by='id', sort_order='desc' if sort_by == 'id' and sort_order == 'asc' else 'asc') }}" class="sort-link">
+                                    No
+                                    {% if sort_by == 'id' %}
+                                        <span class="sort-arrow">{{ '▼' if sort_order == 'desc' else '▲' }}</span>
+                                    {% else %}
+                                        <span class="sort-arrow-inactive">⇅</span>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('recipients.list', page=page, sort_by='first_name', sort_order='desc' if sort_by == 'first_name' and sort_order == 'asc' else 'asc') }}" class="sort-link">
+                                    First Name
+                                    {% if sort_by == 'first_name' %}
+                                        <span class="sort-arrow">{{ '▼' if sort_order == 'desc' else '▲' }}</span>
+                                    {% else %}
+                                        <span class="sort-arrow-inactive">⇅</span>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('recipients.list', page=page, sort_by='company', sort_order='desc' if sort_by == 'company' and sort_order == 'asc' else 'asc') }}" class="sort-link">
+                                    Company
+                                    {% if sort_by == 'company' %}
+                                        <span class="sort-arrow">{{ '▼' if sort_order == 'desc' else '▲' }}</span>
+                                    {% else %}
+                                        <span class="sort-arrow-inactive">⇅</span>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('recipients.list', page=page, sort_by='role', sort_order='desc' if sort_by == 'role' and sort_order == 'asc' else 'asc') }}" class="sort-link">
+                                    Role
+                                    {% if sort_by == 'role' %}
+                                        <span class="sort-arrow">{{ '▼' if sort_order == 'desc' else '▲' }}</span>
+                                    {% else %}
+                                        <span class="sort-arrow-inactive">⇅</span>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('recipients.list', page=page, sort_by='email', sort_order='desc' if sort_by == 'email' and sort_order == 'asc' else 'asc') }}" class="sort-link">
+                                    Email
+                                    {% if sort_by == 'email' %}
+                                        <span class="sort-arrow">{{ '▼' if sort_order == 'desc' else '▲' }}</span>
+                                    {% else %}
+                                        <span class="sort-arrow-inactive">⇅</span>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('recipients.list', page=page, sort_by='first_mail_sent', sort_order='desc' if sort_by == 'first_mail_sent' and sort_order == 'asc' else 'asc') }}" class="sort-link">
+                                    First Mail
+                                    {% if sort_by == 'first_mail_sent' %}
+                                        <span class="sort-arrow">{{ '▼' if sort_order == 'desc' else '▲' }}</span>
+                                    {% else %}
+                                        <span class="sort-arrow-inactive">⇅</span>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('recipients.list', page=page, sort_by='reminder1_sent', sort_order='desc' if sort_by == 'reminder1_sent' and sort_order == 'asc' else 'asc') }}" class="sort-link">
+                                    Reminder 1
+                                    {% if sort_by == 'reminder1_sent' %}
+                                        <span class="sort-arrow">{{ '▼' if sort_order == 'desc' else '▲' }}</span>
+                                    {% else %}
+                                        <span class="sort-arrow-inactive">⇅</span>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('recipients.list', page=page, sort_by='reminder2_sent', sort_order='desc' if sort_by == 'reminder2_sent' and sort_order == 'asc' else 'asc') }}" class="sort-link">
+                                    Reminder 2
+                                    {% if sort_by == 'reminder2_sent' %}
+                                        <span class="sort-arrow">{{ '▼' if sort_order == 'desc' else '▲' }}</span>
+                                    {% else %}
+                                        <span class="sort-arrow-inactive">⇅</span>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('recipients.list', page=page, sort_by='has_replied', sort_order='desc' if sort_by == 'has_replied' and sort_order == 'asc' else 'asc') }}" class="sort-link">
+                                    Replied
+                                    {% if sort_by == 'has_replied' %}
+                                        <span class="sort-arrow">{{ '▼' if sort_order == 'desc' else '▲' }}</span>
+                                    {% else %}
+                                        <span class="sort-arrow-inactive">⇅</span>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('recipients.list', page=page, sort_by='current_status', sort_order='desc' if sort_by == 'current_status' and sort_order == 'asc' else 'asc') }}" class="sort-link">
+                                    Current Status
+                                    {% if sort_by == 'current_status' %}
+                                        <span class="sort-arrow">{{ '▼' if sort_order == 'desc' else '▲' }}</span>
+                                    {% else %}
+                                        <span class="sort-arrow-inactive">⇅</span>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('recipients.list', page=page, sort_by='last_activity', sort_order='desc' if sort_by == 'last_activity' and sort_order == 'asc' else 'asc') }}" class="sort-link">
+                                    Last Activity
+                                    {% if sort_by == 'last_activity' %}
+                                        <span class="sort-arrow">{{ '▼' if sort_order == 'desc' else '▲' }}</span>
+                                    {% else %}
+                                        <span class="sort-arrow-inactive">⇅</span>
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('recipients.list', page=page, sort_by='next_activity', sort_order='desc' if sort_by == 'next_activity' and sort_order == 'asc' else 'asc') }}" class="sort-link">
+                                    Next Activity
+                                    {% if sort_by == 'next_activity' %}
+                                        <span class="sort-arrow">{{ '▼' if sort_order == 'desc' else '▲' }}</span>
+                                    {% else %}
+                                        <span class="sort-arrow-inactive">⇅</span>
+                                    {% endif %}
+                                </a>
+                            </th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -95,6 +204,15 @@
                                     <span class="text-muted">Never</span>
                                 {% endif %}
                             </td>
+                            <td>
+                                {% if recipient.has_replied %}
+                                    <span class="text-muted">-</span>
+                                {% elif recipient.next_activity %}
+                                    {{ recipient.next_activity.strftime('%Y-%m-%d %H:%M') }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
                             <td class="actions-cell">
                                 <a href="{{ url_for('recipients.edit_form', recipient_id=recipient.id) }}" 
                                    class="btn btn-sm btn-primary" title="Edit">Edit</a>
@@ -116,8 +234,8 @@
             <div class="pagination-container">
                 <div class="pagination">
                     {% if has_prev %}
-                        <a href="{{ url_for('recipients.list', page=1) }}" class="pagination-btn">First</a>
-                        <a href="{{ url_for('recipients.list', page=page-1) }}" class="pagination-btn">Previous</a>
+                        <a href="{{ url_for('recipients.list', page=1, sort_by=sort_by, sort_order=sort_order) }}" class="pagination-btn">First</a>
+                        <a href="{{ url_for('recipients.list', page=page-1, sort_by=sort_by, sort_order=sort_order) }}" class="pagination-btn">Previous</a>
                     {% else %}
                         <span class="pagination-btn disabled">First</span>
                         <span class="pagination-btn disabled">Previous</span>
@@ -126,8 +244,8 @@
                     <span class="pagination-info">Page {{ page }} of {{ total_pages }}</span>
 
                     {% if has_next %}
-                        <a href="{{ url_for('recipients.list', page=page+1) }}" class="pagination-btn">Next</a>
-                        <a href="{{ url_for('recipients.list', page=total_pages) }}" class="pagination-btn">Last</a>
+                        <a href="{{ url_for('recipients.list', page=page+1, sort_by=sort_by, sort_order=sort_order) }}" class="pagination-btn">Next</a>
+                        <a href="{{ url_for('recipients.list', page=total_pages, sort_by=sort_by, sort_order=sort_order) }}" class="pagination-btn">Last</a>
                     {% else %}
                         <span class="pagination-btn disabled">Next</span>
                         <span class="pagination-btn disabled">Last</span>
@@ -179,6 +297,30 @@
 </div>
 
 <style>
+/* Sort link styles */
+.sort-link {
+    color: #333;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    cursor: pointer;
+}
+
+.sort-link:hover {
+    color: #007bff;
+}
+
+.sort-arrow {
+    color: #007bff;
+    font-size: 0.8em;
+}
+
+.sort-arrow-inactive {
+    color: #ccc;
+    font-size: 0.8em;
+}
+
 /* Pagination styles */
 .pagination-container {
     padding: 1.5rem;

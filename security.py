@@ -135,6 +135,18 @@ class FormValidator:
         else:
             self.cleaned_data['email'] = email
         
+        # Validate initial_mail_date (optional)
+        initial_mail_date = self.form_data.get('initial_mail_date', '').strip()
+        if initial_mail_date:
+            # Validate datetime format (ISO format from datetime-local input)
+            try:
+                from datetime import datetime
+                # datetime-local format: YYYY-MM-DDTHH:MM
+                datetime.fromisoformat(initial_mail_date)
+                self.cleaned_data['initial_mail_date'] = initial_mail_date
+            except (ValueError, TypeError):
+                self.errors.append("Invalid initial email send date format")
+        
         return len(self.errors) == 0
     
     def get_errors(self) -> List[str]:

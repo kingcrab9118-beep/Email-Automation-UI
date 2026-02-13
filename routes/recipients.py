@@ -12,7 +12,7 @@ from wtforms import StringField, validators
 from wtforms.validators import DataRequired, Email
 
 from database import ui_db, AddRecipientForm
-from security import FormValidator, secure_form_handler, rate_limit, SecurityMiddleware
+from security import FormValidator, secure_form_handler, rate_limit, SecurityMiddleware, rate_limiter
 
 recipients_bp = Blueprint('recipients', __name__, url_prefix='/recipients')
 logger = logging.getLogger(__name__)
@@ -23,13 +23,16 @@ class WTFAddRecipientForm(FlaskForm):
     company = StringField('Company', validators=[DataRequired()])
     role = StringField('Role')
     email = StringField('Email', validators=[DataRequired(), Email()])
+    initial_mail_date = StringField('Initial Email Send Date')
 
 @recipients_bp.route('/')
 def list():
     """Recipients overview page with status table"""
     try:
-        # Get page number from query string (default to 1)
+        # Get page number and sort parameters from query string
         page = request.args.get('page', 1, type=int)
+        sort_by = request.args.get('sort_by', 'id', type=str)
+        sort_order = request.args.get('sort_order', 'asc', type=str)
         per_page = 20
         
         # Run async function in event loop
@@ -41,9 +44,9 @@ def list():
             if not ui_db.db_manager:
                 loop.run_until_complete(ui_db.initialize())
             
-            # Get recipients with status (paginated)
+            # Get recipients with status (paginated and sorted)
             recipients, total_count = loop.run_until_complete(
-                ui_db.get_recipients_with_status(page=page, per_page=per_page)
+                ui_db.get_recipients_with_status(page=page, per_page=per_page, sort_by=sort_by, sort_order=sort_order)
             )
             
             # Calculate pagination info
@@ -59,7 +62,9 @@ def list():
                 total_count=total_count,
                 total_pages=total_pages,
                 has_prev=has_prev,
-                has_next=has_next
+                has_next=has_next,
+                sort_by=sort_by,
+                sort_order=sort_order
             )
             
         finally:
@@ -71,10 +76,17 @@ def list():
         return render_template('recipients.html', recipients=[], error=str(e))
 
 @recipients_bp.route('/new', methods=['GET', 'POST'])
-@rate_limit(max_requests=5, window_seconds=300)  # 5 submissions per 5 minutes
 @secure_form_handler(FormValidator)
 def add_form():
     """Add recipient form page with security validation"""
+    # Apply rate limit only to POST requests
+    if request.method == 'POST':
+        identifier = request.remote_addr
+        if not rate_limiter.is_allowed(identifier, max_requests=1000, window_seconds=300):
+            SecurityMiddleware.log_security_event("RATE_LIMIT_EXCEEDED", f"IP: {identifier}")
+            flash("Too many requests. Please try again later.", 'error')
+            return render_template('add_recipient.html', form=WTFAddRecipientForm())
+    
     form = WTFAddRecipientForm()
     
     if request.method == 'POST':
@@ -127,9 +139,15 @@ def add_form():
     return render_template('add_recipient.html', form=form)
 
 @recipients_bp.route('/add', methods=['POST'])
-@rate_limit(max_requests=5, window_seconds=300)
 def add_submit():
     """Handle recipient addition form submission (alternative endpoint)"""
+    # Apply rate limit
+    identifier = request.remote_addr
+    if not rate_limiter.is_allowed(identifier, max_requests=1000, window_seconds=300):
+        SecurityMiddleware.log_security_event("RATE_LIMIT_EXCEEDED", f"IP: {identifier}")
+        flash("Too many requests. Please try again later.", 'error')
+        return redirect(url_for('recipients.add_form'))
+    
     try:
         # Validate CSRF token
         validate_csrf(request.form.get('csrf_token'))
@@ -173,9 +191,16 @@ def add_submit():
 
 
 @recipients_bp.route('/<int:recipient_id>/edit', methods=['GET', 'POST'])
-@rate_limit(max_requests=10, window_seconds=300)
 def edit_form(recipient_id):
     """Edit recipient form page"""
+    # Apply rate limit only to POST requests
+    if request.method == 'POST':
+        identifier = request.remote_addr
+        if not rate_limiter.is_allowed(identifier, max_requests=1000, window_seconds=300):
+            SecurityMiddleware.log_security_event("RATE_LIMIT_EXCEEDED", f"IP: {identifier}")
+            flash("Too many requests. Please try again later.", 'error')
+            return redirect(url_for('recipients.list'))
+    
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -227,15 +252,20 @@ def edit_form(recipient_id):
         return redirect(url_for('recipients.list'))
 
 @recipients_bp.route('/<int:recipient_id>/edit', methods=['POST'])
-@rate_limit(max_requests=10, window_seconds=300)
 def edit(recipient_id):
     """Handle recipient edit form submission"""
     return edit_form(recipient_id)
 
 @recipients_bp.route('/<int:recipient_id>/delete', methods=['POST'])
-@rate_limit(max_requests=10, window_seconds=300)
 def delete(recipient_id):
     """Delete recipient"""
+    # Apply rate limit
+    identifier = request.remote_addr
+    if not rate_limiter.is_allowed(identifier, max_requests=1000, window_seconds=300):
+        SecurityMiddleware.log_security_event("RATE_LIMIT_EXCEEDED", f"IP: {identifier}")
+        flash("Too many requests. Please try again later.", 'error')
+        return redirect(url_for('recipients.list'))
+    
     loop = None
     try:
         # Validate CSRF token

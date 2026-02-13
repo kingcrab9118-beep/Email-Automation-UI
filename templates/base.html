@@ -9,25 +9,30 @@
 <body>
     <header class="header">
         <div class="container">
-            <h1 class="logo">
-                <a href="{{ url_for('dashboard.index') }}">Email Automation Admin</a>
-            </h1>
-            <nav class="nav">
-                <ul class="nav-list">
-                    <li class="nav-item">
-                        <a href="{{ url_for('dashboard.index') }}" 
-                           class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
-                            Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="{{ url_for('recipients.list') }}" 
-                           class="nav-link {% if request.endpoint and request.endpoint.startswith('recipients') %}active{% endif %}">
-                            Recipients
-                        </a>
-                    </li>
-                </ul>
-            </nav>
+            <div class="header-content">
+                <div class="logo-container">
+                    <a href="{{ url_for('dashboard.index') }}" class="logo-link">
+                        <img src="{{ url_for('static', filename='TalentEmpowermentLogo.png') }}" alt="TalentEmpowerment Logo" class="logo-image">
+                        <h1 class="logo-text">Email Automation Admin</h1>
+                    </a>
+                </div>
+                <nav class="nav">
+                    <ul class="nav-list">
+                        <li class="nav-item">
+                            <a href="{{ url_for('dashboard.index') }}" 
+                               class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ url_for('recipients.list') }}" 
+                               class="nav-link {% if request.endpoint and request.endpoint.startswith('recipients') %}active{% endif %}">
+                                Recipients
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
         </div>
     </header>
 

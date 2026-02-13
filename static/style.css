@@ -22,7 +22,7 @@ body {
 
 /* Header */
 .header {
-    background-color: #2c3e50;
+    background-color: #5a7a94;
     color: white;
     padding: 1rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -32,6 +32,39 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+}
+
+.logo-link {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    text-decoration: none;
+    color: white;
+}
+
+.logo-image {
+    height: 75px;
+    width: auto;
+    object-fit: contain;
+}
+
+.logo-text {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: white;
+    margin: 0;
 }
 
 .logo a {
@@ -403,6 +436,19 @@ body {
 
 /* Responsive design */
 @media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .logo-image {
+        height: 60px;
+    }
+    
+    .logo-text {
+        font-size: 1.2rem;
+    }
+    
     .header .container {
         flex-direction: column;
         gap: 1rem;
