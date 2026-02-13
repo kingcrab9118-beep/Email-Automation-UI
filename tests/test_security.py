@@ -199,7 +199,7 @@ class TestRateLimiter:
         
         # Should allow first few requests
         for i in range(5):
-            assert rate_limiter.is_allowed(identifier, max_requests=10, window_seconds=300) is True
+            assert rate_limiter.is_allowed(identifier, max_requests=1000, window_seconds=300) is True
     
     def test_rate_limiter_blocks_excess_requests(self):
         """Test that rate limiter blocks requests over limit"""

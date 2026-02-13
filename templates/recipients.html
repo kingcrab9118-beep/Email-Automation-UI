@@ -9,8 +9,16 @@
         <div class="btn-group">
             <a href="{{ url_for('recipients.add_form') }}" class="btn btn-success">Add New Recipient</a>
             <a href="{{ url_for('dashboard.index') }}" class="btn btn-secondary">Back to Dashboard</a>
+            <button type="button" onclick="document.getElementById('csvFileInput').click()" class="btn btn-primary">Import from CSV</button>
+            <a href="{{ url_for('recipients.export_csv') }}" class="btn btn-primary">Export to CSV</a>
         </div>
     </div>
+
+    <!-- Hidden file input for CSV import -->
+    <form id="csvImportForm" method="POST" action="{{ url_for('recipients.import_csv') }}" enctype="multipart/form-data" class="hidden-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="file" id="csvFileInput" name="csv_file" accept=".csv" onchange="handleCSVUpload(this)">
+    </form>
 
     {% if error %}
         <div class="message message-error">
@@ -21,14 +29,24 @@
     {% if recipients %}
         <div class="card">
             <div class="card-header">
-                <h2 class="card-title">All Recipients ({{ total_count }})</h2>
-                <p class="text-muted">Showing {{ recipients|length }} of {{ total_count }} recipients (Page {{ page }} of {{ total_pages }})</p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h2 class="card-title">All Recipients ({{ total_count }})</h2>
+                        <p class="text-muted">Showing {{ recipients|length }} of {{ total_count }} recipients (Page {{ page }} of {{ total_pages }})</p>
+                    </div>
+                    <button type="button" id="bulkDeleteBtn" class="btn btn-danger" style="display: none;" onclick="bulkDeleteRecipients()">
+                        Delete Selected
+                    </button>
+                </div>
             </div>
             
             <div class="table-container">
                 <table class="table">
                     <thead>
                         <tr>
+                            <th class="checkbox-column">
+                                <input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes(this)" title="Select all recipients" aria-label="Select all recipients">
+                            </th>
                             <th>
                                 <a href="{{ url_for('recipients.list', page=page, sort_by='id', sort_order='desc' if sort_by == 'id' and sort_order == 'asc' else 'asc') }}" class="sort-link">
                                     No
@@ -155,6 +173,9 @@
                     <tbody>
                         {% for recipient in recipients %}
                         <tr>
+                            <td>
+                                <input type="checkbox" class="recipient-checkbox" value="{{ recipient.id }}" name="recipient_ids" title="Select recipient" aria-label="Select {{ recipient.first_name }}">
+                            </td>
                             <td>{{ (page - 1) * per_page + loop.index }}</td>
                             <td>{{ recipient.first_name }}</td>
                             <td>{{ recipient.company }}</td>
@@ -217,7 +238,7 @@
                                 <a href="{{ url_for('recipients.edit_form', recipient_id=recipient.id) }}" 
                                    class="btn btn-sm btn-primary" title="Edit">Edit</a>
                                 <form method="POST" action="{{ url_for('recipients.delete', recipient_id=recipient.id) }}" 
-                                      style="display: inline;" 
+                                      class="inline-form" 
                                       onsubmit="return confirm('Are you sure you want to delete {{ recipient.first_name }} ({{ recipient.email }})? This action cannot be undone.');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-sm btn-danger" title="Delete">Delete</button>
@@ -297,6 +318,25 @@
 </div>
 
 <style>
+/* Hidden form styles */
+.hidden-form {
+    display: none;
+}
+
+.inline-form {
+    display: inline;
+}
+
+/* Checkbox column */
+.checkbox-column {
+    width: 40px;
+}
+
+/* Ensure buttons have same font as links */
+button.btn {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
 /* Sort link styles */
 .sort-link {
     color: #333;
@@ -386,6 +426,12 @@
     padding: 0.25rem 0.5rem;
     font-size: 0.875rem;
     margin: 0 0.1rem;
+    height: 32px;
+    line-height: 1.5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
 }
 
 @media (max-width: 768px) {
@@ -418,4 +464,92 @@
     }
 }
 </style>
+
+<script>
+function handleCSVUpload(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // Validate file type
+        if (!file.name.endsWith('.csv')) {
+            alert('Please select a CSV file');
+            input.value = '';
+            return;
+        }
+        
+        // Confirm upload
+        if (confirm(`Import recipients from "${file.name}"?\n\nThis will add all recipients from the CSV file to the database.`)) {
+            document.getElementById('csvImportForm').submit();
+        } else {
+            input.value = '';
+        }
+    }
+}
+
+function toggleAllCheckboxes(source) {
+    const checkboxes = document.querySelectorAll('.recipient-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = source.checked;
+    });
+    updateBulkDeleteButton();
+}
+
+function updateBulkDeleteButton() {
+    const checkboxes = document.querySelectorAll('.recipient-checkbox:checked');
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    
+    if (checkboxes.length > 0) {
+        bulkDeleteBtn.style.display = 'block';
+        bulkDeleteBtn.textContent = `Delete Selected (${checkboxes.length})`;
+    } else {
+        bulkDeleteBtn.style.display = 'none';
+    }
+}
+
+function bulkDeleteRecipients() {
+    const checkboxes = document.querySelectorAll('.recipient-checkbox:checked');
+    const recipientIds = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (recipientIds.length === 0) {
+        alert('Please select at least one recipient to delete');
+        return;
+    }
+    
+    const confirmMessage = `Are you sure you want to delete ${recipientIds.length} recipient(s)?\n\nThis action cannot be undone.`;
+    
+    if (confirm(confirmMessage)) {
+        // Create a form and submit
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("recipients.bulk_delete") }}';
+        
+        // Add CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = '{{ csrf_token() }}';
+        form.appendChild(csrfInput);
+        
+        // Add recipient IDs
+        recipientIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'recipient_ids';
+            input.value = id;
+            form.appendChild(input);
+        });
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Add event listeners to individual checkboxes
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.recipient-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkDeleteButton);
+    });
+});
+</script>
 {% endblock %}

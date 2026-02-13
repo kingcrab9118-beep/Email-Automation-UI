@@ -209,7 +209,7 @@ class UIDatabase:
                     reminder1_sent=bool(row[7]),
                     reminder2_sent=bool(row[8]),
                     has_replied=bool(row[9]),
-                    current_status=self._calculate_status(row[5], bool(row[9])),
+                    current_status=self._calculate_status(row[5], bool(row[9]), bool(row[6])),
                     last_activity=last_activity,
                     next_activity=next_activity
                 ))
@@ -220,10 +220,13 @@ class UIDatabase:
             self.logger.error(f"Error getting recipients with status: {e}")
             return [], 0
     
-    def _calculate_status(self, recipient_status: str, has_replied: bool) -> str:
+    def _calculate_status(self, recipient_status: str, has_replied: bool, first_mail_sent: bool) -> str:
         """Calculate human-readable status from database values"""
         if has_replied:
             return "Replied (sequence stopped)"
+        elif not first_mail_sent:
+            # If no mail has been sent yet, show "Not started" regardless of status
+            return "Not started"
         elif recipient_status == 'active':
             return "In sequence"
         elif recipient_status == 'pending':
